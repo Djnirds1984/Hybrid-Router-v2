@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true, // This exposes the server to the local network
     proxy: {
       // Proxy API requests to the backend server
       '/api': {

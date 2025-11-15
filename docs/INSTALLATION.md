@@ -32,12 +32,24 @@ npm install
 
 ### Step 3: Run the Development Server
 
-Start the local development server. This will launch the dashboard in your web browser.
+Start the local development server. This will launch the dashboard.
 
 ```bash
 npm run dev
 ```
 *(Or `yarn dev`)*
+
+After starting, Vite will show you the URLs to access the dashboard:
+```
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://192.168.100.168:5173/
+```
+- Use the **Local** URL if you are browsing from the same machine where the server is running.
+- Use the **Network** URL to access the dashboard from other devices on the same network (like your phone or another computer).
+
+#### **Note on Network Access:**
+The project's `vite.config.js` is configured with `host: true` to make the development server accessible on your local network. If you can't connect using the network IP address, ensure that no firewall on the host machine is blocking port `5173`.
+
 
 #### **Note on Connection Errors:**
 
