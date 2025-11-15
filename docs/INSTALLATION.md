@@ -39,7 +39,18 @@ npm run dev
 ```
 *(Or `yarn dev`)*
 
-The dashboard will open, but it will show a connection error because it cannot connect to the backend yet. Proceed to the next step.
+#### **Note on Connection Errors:**
+
+If the dashboard shows a "Connection Error" (especially one complaining about `... is not valid JSON`), it means the frontend cannot reach the backend.
+
+1.  **First, ensure the backend is running!** Follow the [Backend Setup Guide](./BACKEND_SETUP.md).
+2.  This project uses a `vite.config.js` file to proxy API requests to the backend. If you've just cloned the project or made changes to this file, you may need to **stop and restart** the frontend development server for the proxy to work correctly:
+
+    ```bash
+    # In the terminal running the frontend, press CTRL+C
+    # Then restart it:
+    npm run dev
+    ```
 
 ---
 
