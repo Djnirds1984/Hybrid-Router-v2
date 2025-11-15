@@ -3,78 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { BoardInfo } from './types';
 import { BoardCard } from './components/BoardCard';
 
-// Mock data generation
-const generateMockData = (): BoardInfo[] => [
-  {
-    id: 'rpi3-01',
-    name: 'Raspberry Pi 3',
-    arch: 'arm',
-    cpuUsage: Math.random() * 80 + 10,
-    memory: {
-      used: Math.random() * 0.8 + 0.1,
-      total: 1,
-    },
-    temp: Math.random() * 30 + 40,
-    uptime: `${Math.floor(Math.random() * 30)}d ${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m`,
-    network: {
-      status: 'Online',
-      ipAddress: '192.168.1.101',
-      speed: Math.floor(Math.random() * 50 + 940),
-    },
-  },
-  {
-    id: 'x64-server-01',
-    name: 'Ubuntu Server',
-    arch: 'x64',
-    cpuUsage: Math.random() * 50 + 5,
-    memory: {
-      used: Math.random() * 12 + 2,
-      total: 16,
-    },
-    temp: Math.random() * 20 + 35,
-    uptime: `${Math.floor(Math.random() * 120)}d ${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m`,
-    network: {
-      status: 'Online',
-      ipAddress: '192.168.1.102',
-      speed: Math.floor(Math.random() * 50 + 945),
-    },
-  },
-  {
-    id: 'edge-device-01',
-    name: 'Edge Compute Node',
-    arch: 'x64',
-    cpuUsage: Math.random() * 90 + 10,
-    memory: {
-      used: Math.random() * 28 + 4,
-      total: 32,
-    },
-    temp: Math.random() * 35 + 45,
-    uptime: `${Math.floor(Math.random() * 90)}d ${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m`,
-    network: {
-      status: 'Online',
-      ipAddress: '192.168.1.105',
-      speed: Math.floor(Math.random() * 40 + 950),
-    },
-  },
-    {
-    id: 'rpi4-media',
-    name: 'Raspberry Pi 4',
-    arch: 'arm',
-    cpuUsage: Math.random() * 60 + 20,
-    memory: {
-      used: Math.random() * 3.5 + 0.5,
-      total: 4,
-    },
-    temp: Math.random() * 25 + 42,
-    uptime: `${Math.floor(Math.random() * 50)}d ${Math.floor(Math.random() * 24)}h ${Math.floor(Math.random() * 60)}m`,
-    network: {
-      status: 'Offline',
-      ipAddress: '192.168.1.110',
-      speed: 0,
-    },
-  },
-];
-
+// Mock data generation is removed. The app will now fetch from a real API endpoint.
 
 const App: React.FC = () => {
   const [boards, setBoards] = useState<BoardInfo[]>([]);
@@ -82,27 +11,40 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const fetchBoardInfo = useCallback(() => {
+  // The API endpoint to fetch data from.
+  // This should point to your backend service.
+  // For development, you might use a proxy to avoid CORS issues.
+  const API_ENDPOINT = '/api/boards';
+
+  const fetchBoardInfo = useCallback(async () => {
     setIsLoading(true);
-    setError(null);
-    // Simulate API call
-    setTimeout(() => {
-      try {
-        setBoards(generateMockData());
-        setLastUpdated(new Date());
-      } catch (err) {
-        setError('Failed to fetch board information.');
-      } finally {
-        setIsLoading(false);
+    // Don't clear previous error immediately, so the user sees it until a successful fetch
+    
+    try {
+      const response = await fetch(API_ENDPOINT);
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}: ${response.statusText}`);
       }
-    }, 1000);
+      const data: BoardInfo[] = await response.json();
+      setBoards(data);
+      setLastUpdated(new Date());
+      setError(null); // Clear error on success
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(`Failed to fetch board information. Please ensure the backend service is running and accessible at ${API_ENDPOINT}. Error: ${err.message}`);
+      } else {
+        setError('An unknown error occurred while fetching data.');
+      }
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     fetchBoardInfo();
     const interval = setInterval(fetchBoardInfo, 30000); // Auto-refresh every 30 seconds
     return () => clearInterval(interval);
-     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchBoardInfo]);
 
   return (
@@ -116,7 +58,7 @@ const App: React.FC = () => {
             </p>
           </div>
           <div className="flex items-center mt-4 md:mt-0">
-             {lastUpdated && !isLoading && (
+             {lastUpdated && !isLoading && !error && (
               <p className="text-sm text-text-secondary mr-4">
                 Last updated: {lastUpdated.toLocaleTimeString()}
               </p>
@@ -135,8 +77,9 @@ const App: React.FC = () => {
         </header>
         
         {error && (
-          <div className="bg-red-500/20 text-red-400 p-4 rounded-lg text-center">
-            {error}
+          <div className="bg-red-500/20 text-red-400 p-4 rounded-lg text-center my-4">
+            <p className="font-bold">Connection Error</p>
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
@@ -154,6 +97,11 @@ const App: React.FC = () => {
                 </div>
              ))}
            </div>
+        ) : !isLoading && boards.length === 0 && !error ? (
+          <div className="bg-base-200 text-text-secondary p-8 rounded-lg text-center my-4">
+            <h3 className="text-xl font-semibold mb-2">No Boards Found</h3>
+            <p>The backend is running but returned no board data. Please check your backend configuration.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {boards.map((board) => (
