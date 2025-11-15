@@ -86,3 +86,42 @@ npm run build
 *(Or `yarn build`)*
 
 This generates a `dist` folder with static files that you can deploy to any web server.
+
+---
+
+## 4. Optional: Nginx Reverse Proxy (Development)
+
+You can run the dashboard and backend behind a single local URL using Nginx. This repo includes a ready-to-use config at `nginx/nginx.conf`:
+
+### What it does
+- Serves the frontend development server at `http://localhost:8081/`
+- Proxies API calls `http://localhost:8081/api/...` to the backend on `127.0.0.1:8080`
+- Supports WebSocket/HMR for the Vite dev server
+
+### Prerequisites
+- Frontend dev server running (Vite)
+- Backend server running (Express on port 8080)
+
+### Windows setup
+1. Download the Windows Nginx zip from https://nginx.org/en/download.html and extract it (e.g., to `C:\nginx`)
+2. From a terminal in the project root (`Hybrid-Router-v2`), start Nginx with the repo config:
+
+   ```powershell
+   # Run from the project root
+   C:\nginx\nginx.exe -p "c:\Users\AJC\Documents\GitHub\Hybrid-Router-v2" -c nginx\nginx.conf
+   ```
+
+3. Open `http://localhost:8081/` in your browser
+
+### Adjusting the frontend dev port
+- If your Vite dev server runs on `30000` (per `vite.config.js`), update `nginx/nginx.conf` to point `frontend_dev` at `127.0.0.1:30000`
+- If your Vite dev server runs on `3000` (per `vite.config.ts`), the provided config already targets `127.0.0.1:3000`
+
+### Stopping Nginx (Windows)
+```powershell
+C:\nginx\nginx.exe -p "c:\Users\AJC\Documents\GitHub\Hybrid-Router-v2" -s stop
+```
+
+### Troubleshooting
+- If `http://localhost:8081` doesn’t load, ensure both frontend (`npm run dev`) and backend (`cd backend && npm start`) are running
+- Port conflicts: change the `listen` port in `nginx/nginx.conf` if `8081` is in use
