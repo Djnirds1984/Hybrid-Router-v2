@@ -41,14 +41,14 @@ npm run dev
 
 After starting, Vite will show you the URLs to access the dashboard:
 ```
-  ➜  Local:   http://localhost:3000/
-  ➜  Network: http://192.168.100.168:3000/
+  ➜  Local:   http://localhost:30000/
+  ➜  Network: http://192.168.100.168:30000/
 ```
 - Use the **Local** URL if you are browsing from the same machine where the server is running.
 - Use the **Network** URL to access the dashboard from other devices on the same network (like your phone or another computer).
 
 #### **Note on Network Access:**
-The project's `vite.config.js` is configured with `host: true` and `port: 3000` to make the development server accessible on your local network. If you can't connect using the network IP address, ensure that no firewall on the host machine is blocking port `3000`.
+The project's `vite.config.js` is configured with `host: true` and `port: 30000` to make the development server accessible on your local network. If you can't connect using the network IP address, ensure that no firewall on the host machine is blocking port `30000`.
 
 
 #### **Note on Connection Errors:**
