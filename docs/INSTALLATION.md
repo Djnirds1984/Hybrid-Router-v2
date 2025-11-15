@@ -154,6 +154,69 @@ You can run the dashboard and backend behind a single local URL using Nginx. Thi
 
 4. Open `http://<device-ip>:8081/` from your network
 
+### Quick setup on port 80 (recommended)
+Use this if you want the dashboard at `http://<device-ip>/` instead of `:8081`.
+
+1. Disable the default site:
+
+   ```bash
+   sudo unlink /etc/nginx/sites-enabled/default
+   ```
+
+2. Create the site on port 80 (frontend dev on `30000`, backend on `8080`):
+
+   ```bash
+   sudo tee /etc/nginx/sites-available/hybrid-router >/dev/null <<'EOF'
+   map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+   upstream backend { server 127.0.0.1:8080; }
+   upstream frontend_dev { server 127.0.0.1:30000; }
+   server {
+     listen 80;
+     server_name _;
+     location /api/ {
+       proxy_pass http://backend/;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+     }
+     location / {
+       proxy_pass http://frontend_dev;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+     }
+   }
+   EOF
+   ```
+
+3. Enable and reload:
+
+   ```bash
+   sudo ln -sf /etc/nginx/sites-available/hybrid-router /etc/nginx/sites-enabled/hybrid-router
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
+
+4. Verify:
+
+   ```bash
+   # Through Nginx
+   curl -I http://127.0.0.1/
+   curl -v http://127.0.0.1/api/boards
+   
+   # Direct services
+   curl -I http://127.0.0.1:30000/
+   curl -v http://127.0.0.1:8080/api/boards
+   ```
+
 ### Adjusting the frontend dev port
 - If your Vite dev server runs on `30000` (per `vite.config.js`), change `upstream frontend_dev` to `127.0.0.1:30000`
 - If your Vite dev server runs on `3000` (per `vite.config.ts`), keep `127.0.0.1:3000`
