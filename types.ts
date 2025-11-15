@@ -37,3 +37,13 @@ export interface NetworkSummary {
   gateway: string | null;
   operstate: string | null;
 }
+
+export interface WifiNetwork {
+  ssid: string;
+  signal: number | null;
+}
+
+export interface WifiStatus {
+  interfaces: { iface: string; ip4?: string; mac?: string; operstate?: string }[];
+  ssid: string | null;
+}

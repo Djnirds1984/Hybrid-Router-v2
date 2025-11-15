@@ -1,27 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import type { NetworkInterface, NetworkSummary } from '../types';
+import type { NetworkInterface, NetworkSummary, WifiNetwork, WifiStatus } from '../types';
 
 export const NetworkTab: React.FC = () => {
   const [summary, setSummary] = useState<NetworkSummary | null>(null);
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [wifiStatus, setWifiStatus] = useState<WifiStatus | null>(null);
+  const [wifiScan, setWifiScan] = useState<WifiNetwork[]>([]);
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const fetchAll = async () => {
       try {
         setLoading(true);
-        const [sumRes, ifRes] = await Promise.all([
+        const [sumRes, ifRes, wifiRes, scanRes] = await Promise.all([
           fetch('/api/network/summary'),
           fetch('/api/network/interfaces'),
+          fetch('/api/wifi/status'),
+          fetch('/api/wifi/scan')
         ]);
         if (!sumRes.ok || !ifRes.ok) throw new Error('Network API unavailable');
         const sumData: NetworkSummary = await sumRes.json();
         const ifData: NetworkInterface[] = await ifRes.json();
+        const wifiStat: WifiStatus | null = wifiRes.ok ? await wifiRes.json() : null;
+        const scan: WifiNetwork[] = scanRes.ok ? await scanRes.json() : [];
         if (mounted) {
           setSummary(sumData);
           setInterfaces(ifData);
+          setWifiStatus(wifiStat);
+          setWifiScan(scan);
           setError(null);
         }
       } catch (e) {
@@ -92,6 +102,76 @@ export const NetworkTab: React.FC = () => {
           </table>
         </div>
       </section>
+
+      <section className="bg-base-200 rounded-xl p-6 border border-base-300">
+        <h2 className="text-xl font-bold text-text-primary mb-4">WiFi</h2>
+        {wifiStatus ? (
+          <div className="mb-4">
+            <div className="text-sm text-text-secondary">Current SSID</div>
+            <div className="text-2xl font-bold">{wifiStatus.ssid || 'Not connected'}</div>
+            <div className="text-xs text-text-secondary mt-2">Interfaces: {wifiStatus.interfaces.map(i => i.iface).join(', ') || '—'}</div>
+          </div>
+        ) : (
+          <div className="text-text-secondary">WiFi status unavailable</div>
+        )}
+
+        <div className="mt-4">
+          <div className="text-sm font-semibold text-text-secondary mb-2">Available Networks</div>
+          {wifiScan.length === 0 ? (
+            <div className="text-text-secondary">No networks found or scan requires nmcli</div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {wifiScan.map((n) => (
+                <div key={n.ssid} className="bg-base-300/50 p-3 rounded-lg flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-text-primary">{n.ssid}</div>
+                    <div className="text-xs text-text-secondary">Signal: {n.signal ?? '—'}</div>
+                  </div>
+                  <WifiConnectButton ssid={n.ssid} onDone={() => { /* re-fetch after connect */ }} setConnecting={setConnecting} setError={setConnectError} />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {connectError && (
+            <div className="bg-red-500/20 text-red-400 p-3 rounded-lg mt-3">{connectError}</div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+};
+
+const WifiConnectButton: React.FC<{ ssid: string; onDone: () => void; setConnecting: (b: boolean) => void; setError: (e: string | null) => void }> = ({ ssid, onDone, setConnecting, setError }) => {
+  const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
+  const connect = async () => {
+    try {
+      setConnecting(true);
+      setError(null);
+      const res = await fetch('/api/wifi/connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ssid, password })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.details || 'Failed to connect');
+      }
+      onDone();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to connect');
+    } finally {
+      setConnecting(false);
+    }
+  };
+  return (
+    <div className="flex items-center space-x-2">
+      {show && (
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="bg-base-100 border border-base-300 rounded px-2 py-1 text-sm" />
+      )}
+      <button onClick={() => setShow((s) => !s)} className="text-xs bg-base-300 px-2 py-1 rounded">{show ? 'Hide' : 'Pass'}</button>
+      <button onClick={connect} className="text-xs bg-brand-primary text-white px-3 py-1 rounded">Connect</button>
     </div>
   );
 };
