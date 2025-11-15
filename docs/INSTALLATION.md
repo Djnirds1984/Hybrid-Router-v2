@@ -102,26 +102,104 @@ You can run the dashboard and backend behind a single local URL using Nginx. Thi
 - Frontend dev server running (Vite)
 - Backend server running (Express on port 8080)
 
-### Windows setup
-1. Download the Windows Nginx zip from https://nginx.org/en/download.html and extract it (e.g., to `C:\nginx`)
-2. From a terminal in the project root (`Hybrid-Router-v2`), start Nginx with the repo config:
+### Linux setup (Raspberry Pi / x64 / ARM)
+1. Install Nginx (Debian/Raspberry Pi OS/Ubuntu):
 
-   ```powershell
-   # Run from the project root
-   C:\nginx\nginx.exe -p "c:\Users\AJC\Documents\GitHub\Hybrid-Router-v2" -c nginx\nginx.conf
+   ```bash
+   sudo apt update && sudo apt install -y nginx
    ```
 
-3. Open `http://localhost:8081/` in your browser
+2. Create a site config:
+
+   ```bash
+   sudo tee /etc/nginx/sites-available/hybrid-router >/dev/null <<'EOF'
+   map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+   upstream backend { server 127.0.0.1:8080; }
+   upstream frontend_dev { server 127.0.0.1:3000; }
+   server {
+     listen 8081;
+     server_name _;
+     location /api/ {
+       proxy_pass http://backend/;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+     }
+     location / {
+       proxy_pass http://frontend_dev;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+     }
+   }
+   EOF
+   ```
+
+3. Enable the site and reload Nginx:
+
+   ```bash
+   sudo ln -sf /etc/nginx/sites-available/hybrid-router /etc/nginx/sites-enabled/hybrid-router
+   sudo nginx -t
+   sudo systemctl enable --now nginx
+   sudo systemctl reload nginx
+   ```
+
+4. Open `http://<device-ip>:8081/` from your network
 
 ### Adjusting the frontend dev port
-- If your Vite dev server runs on `30000` (per `vite.config.js`), update `nginx/nginx.conf` to point `frontend_dev` at `127.0.0.1:30000`
-- If your Vite dev server runs on `3000` (per `vite.config.ts`), the provided config already targets `127.0.0.1:3000`
+- If your Vite dev server runs on `30000` (per `vite.config.js`), change `upstream frontend_dev` to `127.0.0.1:30000`
+- If your Vite dev server runs on `3000` (per `vite.config.ts`), keep `127.0.0.1:3000`
 
-### Stopping Nginx (Windows)
-```powershell
-C:\nginx\nginx.exe -p "c:\Users\AJC\Documents\GitHub\Hybrid-Router-v2" -s stop
+### Manage Nginx (Linux)
+```bash
+sudo systemctl status nginx
+sudo systemctl reload nginx
+sudo systemctl stop nginx
 ```
 
 ### Troubleshooting
-- If `http://localhost:8081` doesn’t load, ensure both frontend (`npm run dev`) and backend (`cd backend && npm start`) are running
-- Port conflicts: change the `listen` port in `nginx/nginx.conf` if `8081` is in use
+- If `http://<device-ip>:8081` doesn’t load, ensure both frontend (`npm run dev`) and backend (`cd backend && npm start`) are running
+- Port conflicts: change the `listen` port if `8081` is in use
+- Logs: check `/var/log/nginx/error.log`
+
+### Production example (serve built frontend)
+Once you run `npm run build`, you can serve the `dist` output with Nginx and still proxy `/api` to the backend:
+
+```bash
+sudo mkdir -p /var/www/hybrid-router
+sudo cp -r ./dist/* /var/www/hybrid-router/
+sudo tee /etc/nginx/sites-available/hybrid-router-prod >/dev/null <<'EOF'
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+upstream backend { server 127.0.0.1:8080; }
+server {
+  listen 80;
+  server_name _;
+  root /var/www/hybrid-router;
+  index index.html;
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+  location /api/ {
+    proxy_pass http://backend/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+  }
+}
+EOF
+sudo ln -sf /etc/nginx/sites-available/hybrid-router-prod /etc/nginx/sites-enabled/hybrid-router-prod
+sudo nginx -t
+sudo systemctl reload nginx
+```
