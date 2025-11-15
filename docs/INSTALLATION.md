@@ -288,6 +288,35 @@ sudo systemctl stop nginx
 - Port conflicts: change the `listen` port if `8081` is in use
 - Logs: check `/var/log/nginx/error.log`
 
+#### Fix 502 Bad Gateway (Nano)
+This indicates Nginx cannot reach the upstream.
+
+1. Confirm Vite dev port from the terminal output (`Network: http://<device-ip>:30000/`).
+2. Edit the site with Nano:
+
+   ```bash
+   sudo nano /etc/nginx/sites-available/hybrid-router
+   ```
+
+3. Ensure the frontend upstream matches your device IP and port:
+
+   ```nginx
+   upstream frontend_dev { server <device-ip>:30000; }
+   # Example: upstream frontend_dev { server 192.168.100.168:30000; }
+   ```
+
+4. Save (`Ctrl+O`, `Enter`) and exit (`Ctrl+X`).
+5. Reload Nginx:
+
+   ```bash
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+6. Verify directly:
+   - `curl -I http://127.0.0.1/` (through Nginx)
+   - `curl -I http://<device-ip>:30000/` (Vite dev)
+   - `curl -v http://127.0.0.1:8080/api/boards` (backend)
+
 ### Production example (serve built frontend)
 Once you run `npm run build`, you can serve the `dist` output with Nginx and still proxy `/api` to the backend:
 
