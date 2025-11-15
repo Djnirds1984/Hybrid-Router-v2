@@ -125,7 +125,62 @@ app.get('/api/wifi/status', async (req, res) => {
     const wifi = ifaces.filter((i) => (i.type === 'wireless') || /^wl|^wlan/.test(i.iface));
     let ssid = null;
     try { ssid = await run('iwgetid', ['-r']); } catch {}
-    res.json({ interfaces: wifi.map((i) => ({ iface: i.iface, ip4: i.ip4, mac: i.mac, operstate: i.operstate })), ssid });
+    
+    // Get additional WiFi hardware info
+    let hardwareInfo = null;
+    try {
+      // Try to get WiFi hardware info using lshw (if available)
+      const hwInfo = await run('lshw', ['-C', 'network']).catch(() => null);
+      if (hwInfo) {
+        const wifiSection = hwInfo.split('*-network').find(section => section.includes('wireless') || section.includes('WiFi'));
+        if (wifiSection) {
+          const product = wifiSection.match(/product:\s*(.+)/)?.[1] || 'Unknown';
+          const vendor = wifiSection.match(/vendor:\s*(.+)/)?.[1] || 'Unknown';
+          const capabilities = wifiSection.match(/capabilities:\s*(.+)/)?.[1] || 'Unknown';
+          hardwareInfo = { product, vendor, capabilities };
+        }
+      }
+    } catch {}
+    
+    // Fallback: try lsusb for USB WiFi adapters
+    if (!hardwareInfo) {
+      try {
+        const usbInfo = await run('lsusb').catch(() => null);
+        if (usbInfo) {
+          const wifiLine = usbInfo.split('\n').find(line => 
+            line.toLowerCase().includes('wifi') || 
+            line.toLowerCase().includes('wireless') ||
+            line.toLowerCase().includes('wlan')
+          );
+          if (wifiLine) {
+            const parts = wifiLine.split(' ');
+            const vendor = parts.slice(2, 4).join(' ');
+            const product = parts.slice(4, parts.length - 1).join(' ');
+            hardwareInfo = { 
+              product: product || 'USB WiFi Adapter', 
+              vendor: vendor || 'Unknown',
+              capabilities: 'USB WiFi'
+            };
+          }
+        }
+      } catch {}
+    }
+    
+    res.json({ 
+      interfaces: wifi.map((i) => ({ 
+        iface: i.iface, 
+        ip4: i.ip4, 
+        mac: i.mac, 
+        operstate: i.operstate,
+        type: i.type || 'wireless'
+      })), 
+      ssid,
+      hardware: hardwareInfo || { 
+        product: 'WiFi hardware not detected', 
+        vendor: 'Check if drivers are installed',
+        capabilities: 'N/A'
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to get WiFi status', details: error.message });
   }

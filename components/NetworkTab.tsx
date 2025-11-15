@@ -1,15 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import type { NetworkInterface, NetworkSummary, WifiNetwork, WifiStatus } from '../types';
 
+interface ExtendedWifiStatus extends WifiStatus {
+  hardware?: {
+    product: string;
+    vendor: string;
+    capabilities: string;
+  };
+}
+
 export const NetworkTab: React.FC = () => {
   const [summary, setSummary] = useState<NetworkSummary | null>(null);
   const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [wifiStatus, setWifiStatus] = useState<WifiStatus | null>(null);
+  const [wifiStatus, setWifiStatus] = useState<ExtendedWifiStatus | null>(null);
   const [wifiScan, setWifiScan] = useState<WifiNetwork[]>([]);
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -98,30 +107,70 @@ export const NetworkTab: React.FC = () => {
         </div>
       </section>
 
-      {wifiStatus && wifiStatus.interfaces.length > 0 && (
-        <section className="bg-base-200 rounded-xl p-6 border border-base-300">
-        <h2 className="text-xl font-bold text-text-primary mb-4">WiFi Debug</h2>
+      <section className="bg-base-200 rounded-xl p-6 border border-base-300">
+        <h2 className="text-xl font-bold text-text-primary mb-4">WiFi Configuration</h2>
         <div className="mb-4">
-          <div className="text-sm text-text-secondary">Detected WiFi Interfaces</div>
+          <div className="text-sm text-text-secondary">WiFi Hardware Status</div>
           <div className="text-sm font-mono text-text-primary">
-            {wifiStatus?.interfaces.map(i => `${i.iface} (${i.operstate})`).join(', ') || 'none'}
-          </div>
-          <div className="text-sm text-text-secondary mt-2">Current SSID: {wifiStatus?.ssid || '—'}</div>
-        </div>
-        <button
-          onClick={async () => {
-            try {
-              const res = await fetch('/api/wifi/scan');
-              const list = res.ok ? await res.json() : [];
-              setWifiScan(list);
-            } catch {
-              setWifiScan([]);
+            {wifiStatus?.interfaces && wifiStatus.interfaces.length > 0 
+              ? wifiStatus.interfaces.map(i => `${i.iface} (${i.operstate})`).join(', ')
+              : 'No WiFi interfaces detected - Hardware may be disabled or unavailable'
             }
-          }}
-          className="bg-brand-primary text-white px-3 py-1 rounded text-sm"
-        >
-          Scan Networks
-        </button>
+          </div>
+          <div className="text-sm text-text-secondary mt-2">
+            Current Network: {wifiStatus?.ssid || 'Not connected'}
+          </div>
+          {(!wifiStatus || wifiStatus.interfaces.length === 0) && (
+            <div className="text-sm text-yellow-400 mt-2">
+              💡 Tip: Ensure WiFi hardware is enabled and drivers are installed
+            </div>
+          )}
+        </div>
+        <div className="mb-4 p-3 bg-base-300/30 rounded-lg">
+          <div className="text-sm text-text-secondary">WiFi Hardware Details</div>
+          <div className="text-sm text-text-primary mt-1">
+            <div>Product: {wifiStatus?.hardware?.product || 'Unknown'}</div>
+            <div>Vendor: {wifiStatus?.hardware?.vendor || 'Unknown'}</div>
+            <div>Capabilities: {wifiStatus?.hardware?.capabilities || 'Unknown'}</div>
+          </div>
+        </div>
+        
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={async () => {
+              try {
+                setScanning(true);
+                const res = await fetch('/api/wifi/scan');
+                const list = res.ok ? await res.json() : [];
+                setWifiScan(list);
+              } catch {
+                setWifiScan([]);
+              } finally {
+                setScanning(false);
+              }
+            }}
+            disabled={scanning}
+            className="bg-brand-primary text-white px-3 py-1 rounded text-sm disabled:opacity-50"
+          >
+            {scanning ? 'Scanning...' : 'Scan Networks'}
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const res = await fetch('/api/wifi/status');
+                if (res.ok) {
+                  const status = await res.json();
+                  setWifiStatus(status);
+                }
+              } catch (error) {
+                console.error('Failed to refresh WiFi status:', error);
+              }
+            }}
+            className="bg-base-300 text-text-primary px-3 py-1 rounded text-sm"
+          >
+            Refresh Status
+          </button>
+        </div>
         {wifiScan.length === 0 ? (
           <div className="text-text-secondary mt-2">No networks found</div>
         ) : (
