@@ -1,0 +1,22 @@
+{
+  "name": "hybrid-router-backend",
+  "version": "1.0.0",
+  "description": "Backend server for the Hybrid Router Dashboard to provide system information.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "dashboard",
+    "router",
+    "system-information"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "systeminformation": "^5.22.11"
+  }
+}
