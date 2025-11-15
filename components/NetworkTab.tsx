@@ -188,7 +188,6 @@ export const NetworkTab: React.FC = () => {
         )}
         {connectError && <div className="bg-red-500/20 text-red-400 p-3 rounded-lg mt-3">{connectError}</div>}
       </section>
-      )}
     </div>
   );
 };
