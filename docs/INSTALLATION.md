@@ -18,8 +18,8 @@ This will get the user interface running on your local machine.
 Clone this project to your local machine using Git:
 
 ```bash
-git clone <your-repository-url>
-cd <project-directory>
+git clone https://github.com/Djnirds1984/Hybrid-Router-v2.git
+cd Hybrid-Router-v2
 ```
 
 ### Step 2: Install Dependencies
