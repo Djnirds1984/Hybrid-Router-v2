@@ -59,6 +59,48 @@ app.get('/api/boards', async (req, res) => {
   }
 });
 
+// Network endpoints for router-style UI
+app.get('/api/network/interfaces', async (req, res) => {
+  try {
+    const interfaces = await si.networkInterfaces();
+    res.json(interfaces);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve network interfaces', details: error.message });
+  }
+});
+
+app.get('/api/network/stats', async (req, res) => {
+  try {
+    const stats = await si.networkStats();
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve network stats', details: error.message });
+  }
+});
+
+app.get('/api/network/summary', async (req, res) => {
+  try {
+    const [defIf, defStats, netGateway] = await Promise.all([
+      si.networkInterfaces('default'),
+      si.networkStats('default'),
+      si.networkGatewayDefault().catch(() => null),
+    ]);
+
+    const summary = {
+      interface: defIf?.iface || null,
+      ip4: defIf?.ip4 || null,
+      mac: defIf?.mac || null,
+      speedMbps: typeof defStats?.tx_sec === 'number' ? Math.round((defStats.tx_sec / 1024 / 1024) * 8 * 100) / 100 : 0,
+      rxMbps: typeof defStats?.rx_sec === 'number' ? Math.round((defStats.rx_sec / 1024 / 1024) * 8 * 100) / 100 : 0,
+      gateway: netGateway || null,
+      operstate: defIf?.operstate || null,
+    };
+    res.json(summary);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to retrieve network summary', details: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Hybrid Router backend server running on http://localhost:${PORT}`);
 });
