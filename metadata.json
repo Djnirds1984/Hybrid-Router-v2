@@ -1,0 +1,5 @@
+{
+  "name": "Hybrid Router Dashboard",
+  "description": "A dashboard to monitor and manage hybrid router host boards, such as Raspberry Pi and x64 systems. It fetches and displays real-time system information like CPU usage, memory, temperature, and network status.",
+  "requestFramePermissions": []
+}
