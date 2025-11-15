@@ -217,6 +217,61 @@ Use this if you want the dashboard at `http://<device-ip>/` instead of `:8081`.
    curl -v http://127.0.0.1:8080/api/boards
    ```
 
+### Edit with nano (port 80 dev proxy)
+Use Nano to edit the Nginx site file instead of paste commands.
+
+1. Open the file:
+
+   ```bash
+   sudo nano /etc/nginx/sites-available/hybrid-router
+   ```
+
+2. In Nano, paste this content (frontend dev on `30000`, backend on `8080`):
+
+   ```nginx
+   map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+   upstream backend { server 127.0.0.1:8080; }
+   upstream frontend_dev { server 127.0.0.1:30000; }
+   server {
+     listen 80;
+     server_name _;
+     location /api/ {
+       proxy_pass http://backend/;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+     }
+     location / {
+       proxy_pass http://frontend_dev;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+     }
+   }
+   ```
+
+3. Save and exit:
+   - Press `Ctrl+O`, then `Enter`
+   - Press `Ctrl+X`
+
+4. Enable and reload:
+
+   ```bash
+   sudo unlink /etc/nginx/sites-enabled/default
+   sudo ln -sf /etc/nginx/sites-available/hybrid-router /etc/nginx/sites-enabled/hybrid-router
+   sudo nginx -t && sudo systemctl reload nginx
+   ```
+
+5. If your dev port is `3000`, reopen with `sudo nano /etc/nginx/sites-available/hybrid-router` and change `frontend_dev { server 127.0.0.1:30000; }` to `127.0.0.1:3000;`, save and exit, then reload Nginx.
+
 ### Adjusting the frontend dev port
 - If your Vite dev server runs on `30000` (per `vite.config.js`), change `upstream frontend_dev` to `127.0.0.1:30000`
 - If your Vite dev server runs on `3000` (per `vite.config.ts`), keep `127.0.0.1:3000`
@@ -266,3 +321,40 @@ sudo ln -sf /etc/nginx/sites-available/hybrid-router-prod /etc/nginx/sites-enabl
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+### Edit with nano (production site)
+Use Nano to create or edit the production site file.
+
+1. Open the file:
+
+   ```bash
+   sudo nano /etc/nginx/sites-available/hybrid-router-prod
+   ```
+
+2. In Nano, paste this content:
+
+   ```nginx
+   map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+   upstream backend { server 127.0.0.1:8080; }
+   server {
+     listen 80;
+     server_name _;
+     root /var/www/hybrid-router;
+     index index.html;
+     location / {
+       try_files $uri $uri/ /index.html;
+     }
+     location /api/ {
+       proxy_pass http://backend/;
+       proxy_http_version 1.1;
+       proxy_set_header Host $host;
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Upgrade $http_upgrade;
+       proxy_set_header Connection $connection_upgrade;
+     }
+   }
+   ```
+
+3. Save and exit (`Ctrl+O`, `Enter`, `Ctrl+X`), then enable and reload as shown above.
