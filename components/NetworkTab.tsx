@@ -100,36 +100,45 @@ export const NetworkTab: React.FC = () => {
 
       {wifiStatus && wifiStatus.interfaces.length > 0 && (
         <section className="bg-base-200 rounded-xl p-6 border border-base-300">
-          <h2 className="text-xl font-bold text-text-primary mb-4">WiFi</h2>
-          <div className="mb-4">
-            <div className="text-sm text-text-secondary">Current SSID</div>
-            <div className="text-2xl font-bold">{wifiStatus.ssid || 'Not connected'}</div>
-            <div className="text-xs text-text-secondary mt-2">Interfaces: {wifiStatus.interfaces.map(i => i.iface).join(', ') || '—'}</div>
+        <h2 className="text-xl font-bold text-text-primary mb-4">WiFi Debug</h2>
+        <div className="mb-4">
+          <div className="text-sm text-text-secondary">Detected WiFi Interfaces</div>
+          <div className="text-sm font-mono text-text-primary">
+            {wifiStatus?.interfaces.map(i => `${i.iface} (${i.operstate})`).join(', ') || 'none'}
           </div>
-
-          <div className="mt-4">
-            <div className="text-sm font-semibold text-text-secondary mb-2">Available Networks</div>
-            {wifiScan.length === 0 ? (
-              <div className="text-text-secondary">No networks found or scan requires nmcli</div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {wifiScan.map((n) => (
-                  <div key={n.ssid} className="bg-base-300/50 p-3 rounded-lg flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-text-primary">{n.ssid}</div>
-                      <div className="text-xs text-text-secondary">Signal: {n.signal ?? '—'}</div>
-                    </div>
-                    <WifiConnectButton ssid={n.ssid} onDone={() => { /* re-fetch after connect */ }} setConnecting={setConnecting} setError={setConnectError} />
-                  </div>
-                ))}
+          <div className="text-sm text-text-secondary mt-2">Current SSID: {wifiStatus?.ssid || '—'}</div>
+        </div>
+        <button
+          onClick={async () => {
+            try {
+              const res = await fetch('/api/wifi/scan');
+              const list = res.ok ? await res.json() : [];
+              setWifiScan(list);
+            } catch {
+              setWifiScan([]);
+            }
+          }}
+          className="bg-brand-primary text-white px-3 py-1 rounded text-sm"
+        >
+          Scan Networks
+        </button>
+        {wifiScan.length === 0 ? (
+          <div className="text-text-secondary mt-2">No networks found</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+            {wifiScan.map((n) => (
+              <div key={n.ssid} className="bg-base-300/50 p-3 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-text-primary">{n.ssid}</div>
+                  <div className="text-xs text-text-secondary">Signal: {n.signal ?? '—'}</div>
+                </div>
+                <WifiConnectButton ssid={n.ssid} onDone={() => {}} setConnecting={setConnecting} setError={setConnectError} />
               </div>
-            )}
-
-            {connectError && (
-              <div className="bg-red-500/20 text-red-400 p-3 rounded-lg mt-3">{connectError}</div>
-            )}
+            ))}
           </div>
-        </section>
+        )}
+        {connectError && <div className="bg-red-500/20 text-red-400 p-3 rounded-lg mt-3">{connectError}</div>}
+      </section>
       )}
     </div>
   );
