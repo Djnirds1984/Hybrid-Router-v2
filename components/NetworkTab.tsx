@@ -41,11 +41,6 @@ export const NetworkTab: React.FC = () => {
       }
     };
     fetchAll();
-    const id = setInterval(fetchAll, 15000);
-    return () => {
-      mounted = false;
-      clearInterval(id);
-    };
   }, []);
 
   if (loading) {
@@ -103,41 +98,39 @@ export const NetworkTab: React.FC = () => {
         </div>
       </section>
 
-      <section className="bg-base-200 rounded-xl p-6 border border-base-300">
-        <h2 className="text-xl font-bold text-text-primary mb-4">WiFi</h2>
-        {wifiStatus ? (
+      {wifiStatus && wifiStatus.interfaces.length > 0 && (
+        <section className="bg-base-200 rounded-xl p-6 border border-base-300">
+          <h2 className="text-xl font-bold text-text-primary mb-4">WiFi</h2>
           <div className="mb-4">
             <div className="text-sm text-text-secondary">Current SSID</div>
             <div className="text-2xl font-bold">{wifiStatus.ssid || 'Not connected'}</div>
             <div className="text-xs text-text-secondary mt-2">Interfaces: {wifiStatus.interfaces.map(i => i.iface).join(', ') || '—'}</div>
           </div>
-        ) : (
-          <div className="text-text-secondary">WiFi status unavailable</div>
-        )}
 
-        <div className="mt-4">
-          <div className="text-sm font-semibold text-text-secondary mb-2">Available Networks</div>
-          {wifiScan.length === 0 ? (
-            <div className="text-text-secondary">No networks found or scan requires nmcli</div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {wifiScan.map((n) => (
-                <div key={n.ssid} className="bg-base-300/50 p-3 rounded-lg flex items-center justify-between">
-                  <div>
-                    <div className="font-semibold text-text-primary">{n.ssid}</div>
-                    <div className="text-xs text-text-secondary">Signal: {n.signal ?? '—'}</div>
+          <div className="mt-4">
+            <div className="text-sm font-semibold text-text-secondary mb-2">Available Networks</div>
+            {wifiScan.length === 0 ? (
+              <div className="text-text-secondary">No networks found or scan requires nmcli</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {wifiScan.map((n) => (
+                  <div key={n.ssid} className="bg-base-300/50 p-3 rounded-lg flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-text-primary">{n.ssid}</div>
+                      <div className="text-xs text-text-secondary">Signal: {n.signal ?? '—'}</div>
+                    </div>
+                    <WifiConnectButton ssid={n.ssid} onDone={() => { /* re-fetch after connect */ }} setConnecting={setConnecting} setError={setConnectError} />
                   </div>
-                  <WifiConnectButton ssid={n.ssid} onDone={() => { /* re-fetch after connect */ }} setConnecting={setConnecting} setError={setConnectError} />
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {connectError && (
-            <div className="bg-red-500/20 text-red-400 p-3 rounded-lg mt-3">{connectError}</div>
-          )}
-        </div>
-      </section>
+            {connectError && (
+              <div className="bg-red-500/20 text-red-400 p-3 rounded-lg mt-3">{connectError}</div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
